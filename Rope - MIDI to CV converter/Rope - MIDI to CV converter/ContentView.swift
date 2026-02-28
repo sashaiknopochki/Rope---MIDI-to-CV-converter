@@ -18,47 +18,40 @@ struct ContentView: View {
     }
     
     var body: some View {
-        VStack() {
-            VStack {
-                if hostModel.audioUnitCrashed {
-                    HStack(spacing: 2) {
-                        Text("(\(hostModel.viewModel.title))")
-                            .textSelection(.enabled)
-                        Text("crashed!")
-                    }
-                    ValidationView(hostModel: hostModel, isSheetPresented: $isSheetPresented)
-                } else {
-                    VStack {
-                        Text("\(hostModel.viewModel.title)")
-                            .textSelection(.enabled)
-                            .bold()
+        ZStack {
+            Color(UIColor.systemBackground).ignoresSafeArea()
+
+            VStack(spacing: 24) {
+                VStack(spacing: 6) {
+                    Text("Rope")
+                        .font(.largeTitle.bold())
+                    Text("MIDI to CV Converter")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Text("Use Rope as an AUv3 instrument plugin in AUM or another compatible host app. Rope converts incoming MIDI messages into DC-coupled CV signals for modular synthesizers via an audio interface such as the Expert Sleepers ES-8.")
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 32)
+
+                Divider()
+
+                VStack(spacing: 8) {
+                    if hostModel.audioUnitCrashed {
+                        Label("Plugin crashed", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                    } else {
                         ValidationView(hostModel: hostModel, isSheetPresented: $isSheetPresented)
                         if let viewController = hostModel.viewModel.viewController {
                             AUViewControllerUI(viewController: viewController)
                                 .padding(margin)
-                        } else {
-                            Text(hostModel.viewModel.message)
-                                .frame(minWidth: 400, minHeight: 200)
                         }
                     }
                 }
             }
             .padding(doubleMargin)
-            
-            if hostModel.viewModel.showAudioControls {
-                Text("Audio Playback")
-                Button {
-                    hostModel.isPlaying ? hostModel.stopPlaying() : hostModel.startPlaying()
-                    
-                } label: {
-                    Text(hostModel.isPlaying ? "Stop" : "Play")
-                }
-            }
-            if hostModel.viewModel.showMIDIContols {
-                Text("MIDI Input: Enabled")
-            }
-            Spacer()
-                .frame(height: margin)
         }
     }
 }

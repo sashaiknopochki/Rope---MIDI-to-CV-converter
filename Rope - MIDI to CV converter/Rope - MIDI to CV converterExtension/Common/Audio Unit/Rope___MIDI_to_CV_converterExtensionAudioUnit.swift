@@ -14,10 +14,15 @@ public class Rope___MIDI_to_CV_converterExtensionAudioUnit: AUAudioUnit, @unchec
 	private var format:AVAudioFormat
 
 	@objc override init(componentDescription: AudioComponentDescription, options: AudioComponentInstantiationOptions) throws {
-		self.format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 2)!
+        // Use DiscreteInOrder layout for multi-channel CV output.
+        // standardFormatWithSampleRate:channels: only returns a valid format for 1-2 channels;
+        // it returns nil for other counts, making the force-unwrap crash the extension process.
+        let layoutTag: AudioChannelLayoutTag = kAudioChannelLayoutTag_DiscreteInOrder | 16
+        let channelLayout = AVAudioChannelLayout(layoutTag: layoutTag)!
+		self.format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channelLayout: channelLayout)
 		try super.init(componentDescription: componentDescription, options: options)
 		outputBus = try AUAudioUnitBus(format: self.format)
-        outputBus?.maximumChannelCount = 2
+        outputBus?.maximumChannelCount = 16
 		_outputBusses = AUAudioUnitBusArray(audioUnit: self, busType: AUAudioUnitBusType.output, busses: [outputBus!])
         kernel.initialize(outputBus!.format.sampleRate)
         processHelper = AUProcessHelper(&kernel)
