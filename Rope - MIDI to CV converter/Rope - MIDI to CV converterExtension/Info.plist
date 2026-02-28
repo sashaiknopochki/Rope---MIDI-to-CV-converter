@@ -10,23 +10,23 @@
 			<array>
 				<dict>
 					<key>description</key>
-					<string>Rope___MIDI_to_CV_converterExtension</string>
+					<string>Rope - MIDI to CV converter</string>
 					<key>factoryFunction</key>
 					<string>$(PRODUCT_MODULE_NAME).AudioUnitViewController</string>
 					<key>manufacturer</key>
 					<string>Rope</string>
 					<key>name</key>
-					<string>Grace Scale Devices: Rope___MIDI_to_CV_converterExtension</string>
+					<string>Grace Scale Devices: Rope - MIDI to CV converter</string>
 					<key>sandboxSafe</key>
 					<true/>
 					<key>subtype</key>
 					<string>rope</string>
 					<key>tags</key>
 					<array>
-						<string>MIDI Processor</string>
+						<string>Synth</string>
 					</array>
 					<key>type</key>
-					<string>aumi</string>
+					<string>aumu</string>
 					<key>version</key>
 					<integer>67072</integer>
 				</dict>

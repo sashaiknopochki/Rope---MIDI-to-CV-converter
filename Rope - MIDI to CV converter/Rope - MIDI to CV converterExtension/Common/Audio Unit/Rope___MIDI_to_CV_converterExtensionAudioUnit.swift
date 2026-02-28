@@ -2,10 +2,10 @@
 
 import AVFoundation
 
-public class ___PACKAGENAMEASIDENTIFIER___AudioUnit: AUAudioUnit, @unchecked Sendable
+public class Rope___MIDI_to_CV_converterExtensionAudioUnit: AUAudioUnit, @unchecked Sendable
 {
 	// C++ Objects
-	var kernel = ___PACKAGENAMEASIDENTIFIER___DSPKernel()
+	var kernel = Rope___MIDI_to_CV_converterExtensionDSPKernel()
     var processHelper: AUProcessHelper?
 
 	private var outputBus: AUAudioUnitBus?
@@ -61,7 +61,6 @@ public class ___PACKAGENAMEASIDENTIFIER___AudioUnit: AUAudioUnit, @unchecked Sen
     // Subclassers should call the superclass implementation.
     public override func allocateRenderResources() throws {		
         kernel.setMusicalContextBlock(self.musicalContextBlock)
-        kernel.setMIDIOutputEventBlock(self.midiOutputEventListBlock);
         kernel.initialize(outputBus!.format.sampleRate)
 		try super.allocateRenderResources()
 	}

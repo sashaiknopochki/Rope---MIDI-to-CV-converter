@@ -6,40 +6,40 @@
 #import <AVFoundation/AVFoundation.h>
 
 #include <vector>
-#include "___PACKAGENAMEASIDENTIFIER___DSPKernel.hpp"
+#include "Rope___MIDI_to_CV_converterExtensionDSPKernel.hpp"
 
 //MARK:- AUProcessHelper Utility Class
 class AUProcessHelper
 {
 public:
-    AUProcessHelper(___PACKAGENAMEASIDENTIFIER___DSPKernel& kernel)
+    AUProcessHelper(Rope___MIDI_to_CV_converterExtensionDSPKernel& kernel)
     : mKernel{kernel} {}
     
     /**
      This function handles the event list processing and rendering loop for you.
      Call it inside your internalRenderBlock.
      */
-    void processWithEvents(AudioTimeStamp const *timestamp, AUAudioFrameCount frameCount, AURenderEvent const *events) {
-        
+    void processWithEvents(AudioTimeStamp const *timestamp, AUAudioFrameCount frameCount, AURenderEvent const *events, AudioBufferList* outputBufferList) {
+
         AUEventSampleTime now = AUEventSampleTime(timestamp->mSampleTime);
         AUAudioFrameCount framesRemaining = frameCount;
         AURenderEvent const *nextEvent = events; // events is a linked list, at the beginning, the nextEvent is the first event
-        
+
         while (framesRemaining > 0) {
             // If there are no more events, we can process the entire remaining segment and exit.
             if (nextEvent == nullptr) {
-                mKernel.process(now, framesRemaining);
+                mKernel.process(now, framesRemaining, outputBufferList);
                 return;
             }
-            
+
             // **** start late events late.
             auto timeZero = AUEventSampleTime(0);
             auto headEventTime = nextEvent->head.eventSampleTime;
             AUAudioFrameCount framesThisSegment = AUAudioFrameCount(std::max(timeZero, headEventTime - now));
-            
+
             // Compute everything before the next event.
             if (framesThisSegment > 0) {
-                mKernel.process(now, framesThisSegment);
+                mKernel.process(now, framesThisSegment, outputBufferList);
                 
                 // Advance frames.
                 framesRemaining -= framesThisSegment;
@@ -96,12 +96,12 @@ public:
              
              See the description of the canProcessInPlace property.
              */
-            processWithEvents(timestamp, frameCount, events);
+            processWithEvents(timestamp, frameCount, events, outputData);
 
             return noErr;
         };
         
     }
 private:
-    ___PACKAGENAMEASIDENTIFIER___DSPKernel& mKernel;
+    Rope___MIDI_to_CV_converterExtensionDSPKernel& mKernel;
 };

@@ -1,4 +1,4 @@
 //___FILEHEADER___
 
-#import "___PACKAGENAMEASIDENTIFIER___ParameterAddresses.h"
-#import "___PACKAGENAMEASIDENTIFIER___AUProcessHelper.hpp"
+#import "Rope___MIDI_to_CV_converterExtensionParameterAddresses.h"
+#import "Rope___MIDI_to_CV_converterExtensionAUProcessHelper.hpp"

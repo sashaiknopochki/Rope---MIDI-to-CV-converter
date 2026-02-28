@@ -2,7 +2,7 @@
 
 import SwiftUI
 
-struct ___PACKAGENAMEASIDENTIFIER___MainView: View {
+struct Rope___MIDI_to_CV_converterExtensionMainView: View {
     var parameterTree: ObservableAUParameterGroup
     
     var body: some View {
