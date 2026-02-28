@@ -39,7 +39,7 @@ extension AVAudioUnit {
 
 		if #available(macOS 13.0, iOS 16.0, *) {
 			if viewController == nil {
-				let genericViewController = await AUGenericViewController()
+				let genericViewController = AUGenericViewController()
 				await MainActor.run {
 					genericViewController.auAudioUnit = self.auAudioUnit
 				}
