@@ -6,6 +6,7 @@
 #import <CoreMIDI/MIDIMessages.h>
 
 #import <algorithm>
+#import <cstring>
 #import <vector>
 
 #import "Rope___MIDI_to_CV_converterExtensionParameterAddresses.h"
@@ -19,6 +20,20 @@ class Rope___MIDI_to_CV_converterExtensionDSPKernel {
 public:
     void initialize(double inSampleRate) {
         mSampleRate = inSampleRate;
+        for (int i = 0; i < 16; ++i) {
+            mChannelFunctions[i] = FunctionType::Off;
+            mChannelCCNumbers[i] = 1;
+        }
+
+        // Stage 3 default config for verification without UI:
+        // ch1 gate, ch2 pitch, ch3 velocity, ch4 pitch bend, ch5 aftertouch, ch6 CC1.
+        mChannelFunctions[0] = FunctionType::Gate;
+        mChannelFunctions[1] = FunctionType::Pitch;
+        mChannelFunctions[2] = FunctionType::Velocity;
+        mChannelFunctions[3] = FunctionType::PitchBend;
+        mChannelFunctions[4] = FunctionType::Aftertouch;
+        mChannelFunctions[5] = FunctionType::CC;
+        mChannelCCNumbers[5] = 1;
     }
     
     void deInitialize() {
@@ -34,12 +49,37 @@ public:
     }
     
     // MARK: - Parameter Getter / Setter
-    // No kernel parameters in Stage 2; channel config arrives in Stage 3.
     void setParameter(AUParameterAddress address, AUValue value) {
-        // placeholder — Stage 3 will add channel function/CC params
+        if (address >= channelFunctionBase && address <= channelFunctionLast) {
+            const uint32_t channel = static_cast<uint32_t>(address - channelFunctionBase);
+            uint32_t functionCode = static_cast<uint32_t>(value);
+            if (functionCode > static_cast<uint32_t>(FunctionType::CC)) {
+                functionCode = static_cast<uint32_t>(FunctionType::Off);
+            }
+            mChannelFunctions[channel] = static_cast<FunctionType>(functionCode);
+            return;
+        }
+
+        if (address >= channelCCNumberBase && address <= channelCCNumberLast) {
+            const uint32_t channel = static_cast<uint32_t>(address - channelCCNumberBase);
+            int32_t ccNumber = static_cast<int32_t>(value);
+            ccNumber = std::max(0, std::min(127, ccNumber));
+            mChannelCCNumbers[channel] = static_cast<uint8_t>(ccNumber);
+            return;
+        }
     }
 
     AUValue getParameter(AUParameterAddress address) {
+        if (address >= channelFunctionBase && address <= channelFunctionLast) {
+            const uint32_t channel = static_cast<uint32_t>(address - channelFunctionBase);
+            return static_cast<AUValue>(mChannelFunctions[channel]);
+        }
+
+        if (address >= channelCCNumberBase && address <= channelCCNumberLast) {
+            const uint32_t channel = static_cast<uint32_t>(address - channelCCNumberBase);
+            return static_cast<AUValue>(mChannelCCNumbers[channel]);
+        }
+
         return 0.f;
     }
     
@@ -71,21 +111,11 @@ public:
             memset(outputBufferList->mBuffers[i].mData, 0, outputBufferList->mBuffers[i].mDataByteSize);
         }
 
-        // Channel 0: Gate — 1.0 when note on, 0.0 when note off
-        if (outputBufferList->mNumberBuffers > 0) {
-            float gateValue = mGateOn ? 1.0f : 0.0f;
-            float* gateBuffer = (float*)outputBufferList->mBuffers[0].mData;
+        for (UInt32 channel = 0; channel < outputBufferList->mNumberBuffers; ++channel) {
+            float channelValue = cvValueForChannel(channel);
+            float* channelBuffer = (float*)outputBufferList->mBuffers[channel].mData;
             for (AUAudioFrameCount frame = 0; frame < frameCount; ++frame) {
-                gateBuffer[frame] = gateValue;
-            }
-        }
-
-        // Channel 1: Pitch (1V/oct, C4=0V, each octave = 0.1 fullscale)
-        if (outputBufferList->mNumberBuffers > 1) {
-            float pitchValue = (mCurrentNote - 60) / 120.0f;
-            float* pitchBuffer = (float*)outputBufferList->mBuffers[1].mData;
-            for (AUAudioFrameCount frame = 0; frame < frameCount; ++frame) {
-                pitchBuffer[frame] = pitchValue;
+                channelBuffer[frame] = channelValue;
             }
         }
     }
@@ -159,6 +189,29 @@ public:
     void handleParameterEvent(AUEventSampleTime now, AUParameterEvent const& parameterEvent) {
         setParameter(parameterEvent.parameterAddress, parameterEvent.value);
     }
+
+    float cvValueForChannel(uint32_t channel) const {
+        if (channel >= 16) { return 0.0f; }
+
+        switch (mChannelFunctions[channel]) {
+            case FunctionType::Off:
+                return 0.0f;
+            case FunctionType::Gate:
+                return mGateOn ? 1.0f : 0.0f;
+            case FunctionType::Pitch:
+                return (static_cast<float>(mCurrentNote) - 60.0f) / 120.0f;
+            case FunctionType::Velocity:
+                return static_cast<float>(mCurrentVelocity) / 127.0f;
+            case FunctionType::PitchBend:
+                return static_cast<float>(mPitchBend) / 8192.0f;
+            case FunctionType::Aftertouch:
+                return static_cast<float>(mAftertouch) / 127.0f;
+            case FunctionType::CC:
+                return static_cast<float>(mCCValues[mChannelCCNumbers[channel]]) / 127.0f;
+            default:
+                return 0.0f;
+        }
+    }
     
     // MARK: Member Variables
     AUHostMusicalContextBlock mMusicalContextBlock;
@@ -174,4 +227,17 @@ public:
     int16_t mPitchBend = 0;       // -8192..+8191
     uint8_t mAftertouch = 0;
     uint8_t mCCValues[128] = {};
+
+    enum FunctionType : uint8_t {
+        Off = 0,
+        Gate = 1,
+        Pitch = 2,
+        Velocity = 3,
+        PitchBend = 4,
+        Aftertouch = 5,
+        CC = 6
+    };
+
+    FunctionType mChannelFunctions[16] = {};
+    uint8_t mChannelCCNumbers[16] = {};
 };

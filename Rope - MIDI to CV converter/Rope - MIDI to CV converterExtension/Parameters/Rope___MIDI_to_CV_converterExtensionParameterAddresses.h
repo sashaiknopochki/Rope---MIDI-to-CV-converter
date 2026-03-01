@@ -5,6 +5,8 @@
 #include <AudioToolbox/AUParameters.h>
 
 typedef NS_ENUM(AUParameterAddress, Rope___MIDI_to_CV_converterExtensionParameterAddress) {
-    sendNote = 0,
-    midiNoteNumber = 1
+    channelFunctionBase = 0,
+    channelFunctionLast = 15,
+    channelCCNumberBase = 100,
+    channelCCNumberLast = 115
 };
