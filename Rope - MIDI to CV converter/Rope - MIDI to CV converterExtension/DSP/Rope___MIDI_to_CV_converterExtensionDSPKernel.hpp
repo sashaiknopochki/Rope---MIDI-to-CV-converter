@@ -137,6 +137,10 @@ public:
                 handleParameterEvent(now, event->parameter);
                 break;
 
+            case AURenderEventMIDI:
+                handleMIDI1Event(now, &event->MIDI);
+                break;
+
             case AURenderEventMIDIEventList:
                 handleMIDIEventList(now, &event->MIDIEventsList);
                 break;
@@ -160,46 +164,33 @@ public:
                     uint8_t note = message.channelVoice2.note.number;
                     uint16_t velocity16 = message.channelVoice2.note.velocity;
                     if (velocity16 == 0) {
-                        if (kernel->mCurrentNote[channel] == note) { kernel->mGateOn[channel] = false; }
-                        if (kernel->mLastAnyNote == note) { kernel->mAnyGateOn = kernel->isAnyGateOn(); }
+                        kernel->handleNoteOff(channel, note);
                     } else {
-                        kernel->mGateOn[channel] = true;
-                        kernel->mCurrentNote[channel] = note;
-                        kernel->mCurrentVelocity[channel] = static_cast<uint8_t>(velocity16 >> 9);
-
-                        kernel->mAnyGateOn = true;
-                        kernel->mLastAnyNote = note;
-                        kernel->mLastAnyVelocity = kernel->mCurrentVelocity[channel];
+                        kernel->handleNoteOn(channel, note, static_cast<uint8_t>(velocity16 >> 9));
                     }
                     break;
                 }
                 case kMIDICVStatusNoteOff: {
                     uint8_t note = message.channelVoice2.note.number;
-                    if (kernel->mCurrentNote[channel] == note) {
-                        kernel->mGateOn[channel] = false;
-                    }
-                    kernel->mAnyGateOn = kernel->isAnyGateOn();
+                    kernel->handleNoteOff(channel, note);
                     break;
                 }
                 case kMIDICVStatusPitchBend: {
                     int64_t raw = static_cast<int64_t>(message.channelVoice2.pitchBend.data);
                     int16_t bend = static_cast<int16_t>((raw - 0x80000000LL) >> 18);
-                    kernel->mPitchBend[channel] = bend;
-                    kernel->mLastAnyPitchBend = bend;
+                    kernel->handlePitchBend(channel, bend);
                     break;
                 }
                 case kMIDICVStatusChannelPressure: {
                     uint8_t pressure = static_cast<uint8_t>(message.channelVoice2.channelPressure.data >> 25);
-                    kernel->mAftertouch[channel] = pressure;
-                    kernel->mLastAnyAftertouch = pressure;
+                    kernel->handleChannelPressure(channel, pressure);
                     break;
                 }
                 case kMIDICVStatusControlChange: {
                     uint8_t ccIndex = message.channelVoice2.controlChange.index;
                     if (ccIndex < 128) {
                         uint8_t ccValue = static_cast<uint8_t>(message.channelVoice2.controlChange.data >> 25);
-                        kernel->mCCValues[channel][ccIndex] = ccValue;
-                        kernel->mAnyCCValues[ccIndex] = ccValue;
+                        kernel->handleCC(channel, ccIndex, ccValue);
                     }
                     break;
                 }
@@ -209,6 +200,63 @@ public:
         };
 
         MIDIEventListForEachEvent(&midiEvent->eventList, visitor, this);
+    }
+
+    void handleMIDI1Event(AUEventSampleTime now, AUMIDIEvent const* midiEvent) {
+        if (midiEvent == nullptr || midiEvent->length < 1) { return; }
+
+        const uint8_t status = midiEvent->data[0];
+        const uint8_t type = static_cast<uint8_t>(status & 0xF0);
+        const uint8_t channel = static_cast<uint8_t>(status & 0x0F);
+        if (channel >= kMIDIChannelCount) { return; }
+
+        switch (type) {
+            case 0x80: { // Note Off
+                if (midiEvent->length < 2) { return; }
+                const uint8_t note = midiEvent->data[1] & 0x7F;
+                handleNoteOff(channel, note);
+                break;
+            }
+
+            case 0x90: { // Note On
+                if (midiEvent->length < 3) { return; }
+                const uint8_t note = midiEvent->data[1] & 0x7F;
+                const uint8_t velocity = midiEvent->data[2] & 0x7F;
+                if (velocity == 0) {
+                    handleNoteOff(channel, note);
+                } else {
+                    handleNoteOn(channel, note, velocity);
+                }
+                break;
+            }
+
+            case 0xB0: { // CC
+                if (midiEvent->length < 3) { return; }
+                const uint8_t ccIndex = midiEvent->data[1] & 0x7F;
+                const uint8_t ccValue = midiEvent->data[2] & 0x7F;
+                handleCC(channel, ccIndex, ccValue);
+                break;
+            }
+
+            case 0xD0: { // Channel Pressure
+                if (midiEvent->length < 2) { return; }
+                const uint8_t pressure = midiEvent->data[1] & 0x7F;
+                handleChannelPressure(channel, pressure);
+                break;
+            }
+
+            case 0xE0: { // Pitch Bend
+                if (midiEvent->length < 3) { return; }
+                const int32_t bend14 = (static_cast<int32_t>(midiEvent->data[1] & 0x7F))
+                    | (static_cast<int32_t>(midiEvent->data[2] & 0x7F) << 7);
+                const int16_t bend = static_cast<int16_t>(bend14 - 8192);
+                handlePitchBend(channel, bend);
+                break;
+            }
+
+            default:
+                break;
+        }
     }
 
     void handleParameterEvent(AUEventSampleTime now, AUParameterEvent const& parameterEvent) {
@@ -251,6 +299,39 @@ private:
             if (mGateOn[i]) { return true; }
         }
         return false;
+    }
+
+    void handleNoteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
+        mGateOn[channel] = true;
+        mCurrentNote[channel] = note;
+        mCurrentVelocity[channel] = velocity;
+
+        mAnyGateOn = true;
+        mLastAnyNote = note;
+        mLastAnyVelocity = velocity;
+    }
+
+    void handleNoteOff(uint8_t channel, uint8_t note) {
+        if (mCurrentNote[channel] == note) {
+            mGateOn[channel] = false;
+        }
+        mAnyGateOn = isAnyGateOn();
+    }
+
+    void handlePitchBend(uint8_t channel, int16_t bend) {
+        mPitchBend[channel] = bend;
+        mLastAnyPitchBend = bend;
+    }
+
+    void handleChannelPressure(uint8_t channel, uint8_t pressure) {
+        mAftertouch[channel] = pressure;
+        mLastAnyAftertouch = pressure;
+    }
+
+    void handleCC(uint8_t channel, uint8_t ccIndex, uint8_t ccValue) {
+        if (ccIndex >= 128) { return; }
+        mCCValues[channel][ccIndex] = ccValue;
+        mAnyCCValues[ccIndex] = ccValue;
     }
 
     float cvValueForCard(uint8_t cardIndex) const {

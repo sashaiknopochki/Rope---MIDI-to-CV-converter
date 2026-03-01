@@ -124,7 +124,8 @@ public class AudioUnitViewController: AUViewController, AUAudioUnitFactory {
         guard let parameterTree = audioUnit.parameterTree else {
             return
         }
-        let model = OutputCardListModel(parameterTree: parameterTree)
+        let restoredCards = (audioUnit as? Rope___MIDI_to_CV_converterExtensionAudioUnit)?.restoredOutputCardsForUI
+        let model = OutputCardListModel(parameterTree: parameterTree, restoredCards: restoredCards)
         outputCardListModel = model
 
         let content = Rope___MIDI_to_CV_converterExtensionMainView(model: model)

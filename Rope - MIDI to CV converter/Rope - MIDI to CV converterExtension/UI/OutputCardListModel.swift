@@ -43,8 +43,14 @@ final class OutputCardListModel: ObservableObject {
 
     private let parameterTree: AUParameterTree
 
-    init(parameterTree: AUParameterTree) {
+    init(parameterTree: AUParameterTree, restoredCards: [OutputCard]? = nil) {
         self.parameterTree = parameterTree
+        if let restoredCards {
+            self.cards = Self.sanitizeCards(restoredCards)
+            pushConfigToKernel()
+            return
+        }
+
         self.cards = Self.readCards(from: parameterTree)
 
         if cards.isEmpty {
@@ -212,5 +218,26 @@ final class OutputCardListModel: ObservableObject {
             OutputCard(slotIndex: 0, sourceMIDIChannel: 0, function: .gate, ccNumber: 1, outputChannel: 1),
             OutputCard(slotIndex: 1, sourceMIDIChannel: 0, function: .pitch, ccNumber: 1, outputChannel: 2)
         ]
+    }
+
+    private static func sanitizeCards(_ cards: [OutputCard]) -> [OutputCard] {
+        var seenSlots = Set<Int>()
+        return cards
+            .map { card in
+                OutputCard(
+                    slotIndex: max(0, min(maxCards - 1, card.slotIndex)),
+                    sourceMIDIChannel: max(0, min(16, card.sourceMIDIChannel)),
+                    function: card.function,
+                    ccNumber: max(0, min(127, card.ccNumber)),
+                    outputChannel: max(1, min(16, card.outputChannel))
+                )
+            }
+            .filter { card in
+                guard !seenSlots.contains(card.slotIndex) else { return false }
+                seenSlots.insert(card.slotIndex)
+                return true
+            }
+            .prefix(maxCards)
+            .sorted { $0.slotIndex < $1.slotIndex }
     }
 }
