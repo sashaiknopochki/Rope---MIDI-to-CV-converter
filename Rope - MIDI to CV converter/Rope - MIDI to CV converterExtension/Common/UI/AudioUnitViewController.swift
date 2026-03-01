@@ -61,40 +61,57 @@ public class AudioUnitViewController: AUViewController, AUAudioUnitFactory {
         configureSwiftUIView(audioUnit: audioUnit)
     }
     
+    @MainActor
+    private func buildAudioUnit(componentDescription: AudioComponentDescription) throws -> AUAudioUnit {
+        audioUnit = try Rope___MIDI_to_CV_converterExtensionAudioUnit(componentDescription: componentDescription, options: [])
+        
+        guard let audioUnit = self.audioUnit as? Rope___MIDI_to_CV_converterExtensionAudioUnit else {
+            log.error("Unable to create Rope___MIDI_to_CV_converterExtensionAudioUnit")
+            return self.audioUnit!
+        }
+        
+        defer {
+            // Configure the SwiftUI view after creating the AU, instead of in viewDidLoad,
+            // so that the parameter tree is set up before we build our @AUParameterUI properties
+            DispatchQueue.main.async {
+                self.configureSwiftUIView(audioUnit: audioUnit)
+            }
+        }
+        
+        audioUnit.setupParameterTree(Rope___MIDI_to_CV_converterExtensionParameterSpecs.createAUParameterTree())
+        
+        self.observation = audioUnit.observe(\.allParameterValues, options: [.new]) { object, change in
+            guard let tree = audioUnit.parameterTree else { return }
+            
+            // This insures the Audio Unit gets initial values from the host.
+            for param in tree.allParameters { param.value = param.value }
+        }
+        
+        guard audioUnit.parameterTree != nil else {
+            log.error("Unable to access AU ParameterTree")
+            return audioUnit
+        }
+        
+        return audioUnit
+    }
+    
 	nonisolated public func createAudioUnit(with componentDescription: AudioComponentDescription) throws -> AUAudioUnit {
-		return try DispatchQueue.main.sync {
-			
-			audioUnit = try Rope___MIDI_to_CV_converterExtensionAudioUnit(componentDescription: componentDescription, options: [])
-			
-			guard let audioUnit = self.audioUnit as? Rope___MIDI_to_CV_converterExtensionAudioUnit else {
-				log.error("Unable to create Rope___MIDI_to_CV_converterExtensionAudioUnit")
-				return audioUnit!
-			}
-			
-			defer {
-				// Configure the SwiftUI view after creating the AU, instead of in viewDidLoad,
-				// so that the parameter tree is set up before we build our @AUParameterUI properties
-				DispatchQueue.main.async {
-					self.configureSwiftUIView(audioUnit: audioUnit)
-				}
-			}
-			
-			audioUnit.setupParameterTree(Rope___MIDI_to_CV_converterExtensionParameterSpecs.createAUParameterTree())
-			
-			self.observation = audioUnit.observe(\.allParameterValues, options: [.new]) { object, change in
-				guard let tree = audioUnit.parameterTree else { return }
-				
-				// This insures the Audio Unit gets initial values from the host.
-				for param in tree.allParameters { param.value = param.value }
-			}
-			
-			guard audioUnit.parameterTree != nil else {
-				log.error("Unable to access AU ParameterTree")
-				return audioUnit
-			}
-			
-			return audioUnit
-		}
+        // Avoid deadlocking the extension host when this callback is already invoked on main.
+        if Thread.isMainThread {
+            return try MainActor.assumeIsolated {
+                try self.buildAudioUnit(componentDescription: componentDescription)
+            }
+        }
+        
+        var result: Result<AUAudioUnit, Error>!
+        DispatchQueue.main.sync {
+            result = Result {
+                try MainActor.assumeIsolated {
+                    try self.buildAudioUnit(componentDescription: componentDescription)
+                }
+            }
+        }
+        return try result.get()
 	}
     
     private func configureSwiftUIView(audioUnit: AUAudioUnit) {
