@@ -8,5 +8,9 @@ typedef NS_ENUM(AUParameterAddress, Rope___MIDI_to_CV_converterExtensionParamete
     channelFunctionBase = 0,
     channelFunctionLast = 15,
     channelCCNumberBase = 100,
-    channelCCNumberLast = 115
+    channelCCNumberLast = 115,
+    channelSourceMIDIChannelBase = 200,
+    channelSourceMIDIChannelLast = 215,
+    channelOutputNumberBase = 300,
+    channelOutputNumberLast = 315
 };

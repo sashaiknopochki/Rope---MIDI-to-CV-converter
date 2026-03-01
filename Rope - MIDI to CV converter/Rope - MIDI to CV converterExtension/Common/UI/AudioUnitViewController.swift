@@ -17,6 +17,7 @@ public class AudioUnitViewController: AUViewController, AUAudioUnitFactory {
     var audioUnit: AUAudioUnit?
     
     var hostingController: HostingController<Rope___MIDI_to_CV_converterExtensionMainView>?
+    var outputCardListModel: OutputCardListModel?
     
     private var observation: NSKeyValueObservation?
 
@@ -120,10 +121,13 @@ public class AudioUnitViewController: AUViewController, AUAudioUnitFactory {
             host.view.removeFromSuperview()
         }
         
-        guard let observableParameterTree = audioUnit.observableParameterTree else {
+        guard let parameterTree = audioUnit.parameterTree else {
             return
         }
-        let content = Rope___MIDI_to_CV_converterExtensionMainView(parameterTree: observableParameterTree)
+        let model = OutputCardListModel(parameterTree: parameterTree)
+        outputCardListModel = model
+
+        let content = Rope___MIDI_to_CV_converterExtensionMainView(model: model)
         let host = HostingController(rootView: content)
         self.addChild(host)
         host.view.frame = self.view.bounds
