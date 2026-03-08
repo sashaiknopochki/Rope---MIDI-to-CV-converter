@@ -1,0 +1,21 @@
+
+Showing All Issues
+Prepare build
+Prepare packages
+Build target Rope - MIDI to CV converterExtension
+Build target Rope - MIDI to CV converter
+CompileAssetCatalogVariant thinned /Users/grace_scale/Library/Developer/Xcode/DerivedData/Rope_-_MIDI_to_CV_converter-anasetgkcbakbiammowmgwnjlqdh/Build/Products/Debug-iphoneos/Rope\ -\ MIDI\ to\ CV\ converter.app /Users/grace_scale/GitHub\ Projects/Rope---MIDI-to-CV-converter/Rope\ -\ MIDI\ to\ CV\ converter/Rope\ -\ MIDI\ to\ CV\ converter/Assets.xcassets (in target 'Rope - MIDI to CV converter' from project 'Rope - MIDI to CV converter')
+    cd /Users/grace_scale/GitHub\ Projects/Rope---MIDI-to-CV-converter/Rope\ -\ MIDI\ to\ CV\ converter
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/grace_scale/GitHub\ Projects/Rope---MIDI-to-CV-converter/Rope\ -\ MIDI\ to\ CV\ converter/Rope\ -\ MIDI\ to\ CV\ converter/Assets.xcassets --compile /Users/grace_scale/Library/Developer/Xcode/DerivedData/Rope_-_MIDI_to_CV_converter-anasetgkcbakbiammowmgwnjlqdh/Build/Intermediates.noindex/Rope\ -\ MIDI\ to\ CV\ converter.build/Debug-iphoneos/Rope\ -\ MIDI\ to\ CV\ converter.build/assetcatalog_output/thinned --output-format human-readable-text --notices --warnings --export-dependency-info /Users/grace_scale/Library/Developer/Xcode/DerivedData/Rope_-_MIDI_to_CV_converter-anasetgkcbakbiammowmgwnjlqdh/Build/Intermediates.noindex/Rope\ -\ MIDI\ to\ CV\ converter.build/Debug-iphoneos/Rope\ -\ MIDI\ to\ CV\ converter.build/assetcatalog_dependencies_thinned --output-partial-info-plist /Users/grace_scale/Library/Developer/Xcode/DerivedData/Rope_-_MIDI_to_CV_converter-anasetgkcbakbiammowmgwnjlqdh/Build/Intermediates.noindex/Rope\ -\ MIDI\ to\ CV\ converter.build/Debug-iphoneos/Rope\ -\ MIDI\ to\ CV\ converter.build/assetcatalog_generated_info.plist_thinned --app-icon AppIcon --accent-color AccentColor --compress-pngs --enable-on-demand-resources YES --filter-for-thinning-device-configuration iPad16,1 --filter-for-device-os-version 26.3 --development-region en --target-device iphone --target-device ipad --minimum-deployment-target 17.6 --platform iphoneos
+
+/* com.apple.actool.errors */
+/Users/grace_scale/GitHub Projects/Rope---MIDI-to-CV-converter/Rope - MIDI to CV converter/Rope - MIDI to CV converter/Assets.xcassets: error: The stickers icon set, app icon set, or icon stack named "AppIcon" did not have any applicable content.
+/* com.apple.actool.compilation-results */
+/Users/grace_scale/Library/Developer/Xcode/DerivedData/Rope_-_MIDI_to_CV_converter-anasetgkcbakbiammowmgwnjlqdh/Build/Intermediates.noindex/Rope - MIDI to CV converter.build/Debug-iphoneos/Rope - MIDI to CV converter.build/assetcatalog_generated_info.plist_thinned
+
+
+/Users/grace_scale/GitHub Projects/Rope---MIDI-to-CV-converter/Rope - MIDI to CV converter/Rope - MIDI to CV converter/Assets.xcassets:: The stickers icon set, app icon set, or icon stack named "AppIcon" did not have any applicable content.
+
+
+
+Activity Log Complete    08.03.26, 18:49    0.4 seconds
