@@ -8,7 +8,7 @@ struct OutputCardView: View {
     private let silver = Color(red: 166.0 / 255.0, green: 166.0 / 255.0, blue: 166.0 / 255.0)
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 32) {
+        VStack(alignment: .leading, spacing: 18) {
             parameterBlock(
                 title: "MIDI CHANNEL",
                 value: sourceMIDIChannelLabel
@@ -56,9 +56,9 @@ struct OutputCardView: View {
         value: String,
         @ViewBuilder menuItems: () -> MenuItems
     ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.system(size: 15, weight: .regular))
+                .font(.system(size: 13, weight: .regular))
                 .tracking(0.9)
                 .foregroundStyle(gold)
 
@@ -67,15 +67,15 @@ struct OutputCardView: View {
             } label: {
                 HStack {
                     Text(value)
-                        .font(.system(size: 20, weight: .regular))
+                        .font(.system(size: 18, weight: .regular))
                         .foregroundStyle(.black)
                         .lineLimit(1)
                         .truncationMode(.tail)
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                .padding(.vertical, 3)
+                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
                 .background(
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
                         .fill(silver)

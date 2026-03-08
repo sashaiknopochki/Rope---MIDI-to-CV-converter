@@ -1,13 +1,11 @@
 //___FILEHEADER___
 
 import AVFoundation
-import CoreAudioKit
 import Foundation
 
 public class Rope___MIDI_to_CV_converterExtensionAudioUnit: AUAudioUnit, @unchecked Sendable
 {
     private static let outputCardsStateKey = "rope.outputCards.v1"
-    private static let minimumPreferredViewHeight: CGFloat = 400
 
 	// C++ Objects
 	var kernel = Rope___MIDI_to_CV_converterExtensionDSPKernel()
@@ -102,16 +100,6 @@ public class Rope___MIDI_to_CV_converterExtensionAudioUnit: AUAudioUnit, @unchec
             hostOutputChannelCount = Int(format.channelCount)
         }
         return shouldChange
-    }
-
-    public override func supportedViewConfigurations(_ availableViewConfigurations: [AUAudioUnitViewConfiguration]) -> IndexSet {
-        var supported = IndexSet()
-        for (index, configuration) in availableViewConfigurations.enumerated() {
-            if configuration.height >= Self.minimumPreferredViewHeight {
-                supported.insert(index)
-            }
-        }
-        return supported
     }
 
 	public func setupParameterTree(_ parameterTree: AUParameterTree) {

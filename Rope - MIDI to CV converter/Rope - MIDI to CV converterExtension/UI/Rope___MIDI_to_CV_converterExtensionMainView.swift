@@ -12,12 +12,12 @@ struct Rope___MIDI_to_CV_converterExtensionMainView: View {
             ZStack {
                 Color.black.ignoresSafeArea()
 
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 18) {
                     titleRow
                     contentPanel
                     footer
                 }
-                .padding(16)
+                .padding(12)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
@@ -39,7 +39,7 @@ struct Rope___MIDI_to_CV_converterExtensionMainView: View {
     }
 
     private var contentPanel: some View {
-        VStack(alignment: .leading, spacing: 32) {
+        VStack(alignment: .leading, spacing: 20) {
             outputHeader
             Group {
                 switch model.hostOutputState {
@@ -62,7 +62,7 @@ struct Rope___MIDI_to_CV_converterExtensionMainView: View {
     }
 
     private var outputHeader: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 10) {
             Rectangle()
                 .fill(gold.opacity(0))
                 .frame(height: 1)
@@ -82,7 +82,7 @@ struct Rope___MIDI_to_CV_converterExtensionMainView: View {
                 .fill(gold.opacity(0))
                 .frame(height: 1)
         }
-        .padding(.top, 16)
+        .padding(.top, 8)
         .frame(maxWidth: .infinity)
     }
 
@@ -98,14 +98,14 @@ struct Rope___MIDI_to_CV_converterExtensionMainView: View {
     }
 
     private var cardContent: some View {
-        HStack(alignment: .top, spacing: 24) {
+        HStack(alignment: .top, spacing: 48) {
             cardSlot(for: 0)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             cardSlot(for: 1)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .padding(.bottom, 8)
+        .padding(.bottom, 2)
         .overlay(alignment: .center) {
             Rectangle()
                 .fill(gold)
@@ -115,11 +115,12 @@ struct Rope___MIDI_to_CV_converterExtensionMainView: View {
     }
 
     private var footer: some View {
-        Text("Grace Scale Devices")
+        Text("Grace Scale")
             .font(.system(size: 15, weight: .regular))
             .tracking(0.9)
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.top, 2)
     }
 
     @ViewBuilder

@@ -14,8 +14,6 @@ private let log = Logger(subsystem: "com.gracescale.Rope---MIDI-to-CV-converterE
 
 @MainActor
 public class AudioUnitViewController: AUViewController, AUAudioUnitFactory {
-    private let minimumPluginHeight: CGFloat = 400
-
     var audioUnit: AUAudioUnit?
     var outputCardListModel: OutputCardListModel?
 
@@ -24,7 +22,6 @@ public class AudioUnitViewController: AUViewController, AUAudioUnitFactory {
     private var modelStateObservation: AnyCancellable?
 
     private var rootHostingController: HostingController<Rope___MIDI_to_CV_converterExtensionMainView>?
-    private var minimumHeightConstraint: NSLayoutConstraint?
 
     deinit {
     }
@@ -32,10 +29,6 @@ public class AudioUnitViewController: AUViewController, AUAudioUnitFactory {
     public override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
-        let minHeightConstraint = view.heightAnchor.constraint(greaterThanOrEqualToConstant: minimumPluginHeight)
-        minHeightConstraint.priority = .required
-        minHeightConstraint.isActive = true
-        minimumHeightConstraint = minHeightConstraint
         applyAdaptivePreferredContentSize()
 
         // Accessing the `audioUnit` parameter prompts the AU to be created via createAudioUnit(with:)
@@ -47,11 +40,6 @@ public class AudioUnitViewController: AUViewController, AUAudioUnitFactory {
 
     public override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        applyAdaptivePreferredContentSize()
-    }
-
-    public override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
         applyAdaptivePreferredContentSize()
     }
 
@@ -179,15 +167,14 @@ public class AudioUnitViewController: AUViewController, AUAudioUnitFactory {
             host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-        host.view.heightAnchor.constraint(greaterThanOrEqualToConstant: minimumPluginHeight).isActive = true
         host.didMove(toParent: self)
     }
 
     private func applyAdaptivePreferredContentSize() {
         if traitCollection.horizontalSizeClass == .regular {
-            preferredContentSize = CGSize(width: 744, height: minimumPluginHeight)
+            preferredContentSize = CGSize(width: 744, height: 335)
         } else {
-            preferredContentSize = CGSize(width: 406, height: minimumPluginHeight)
+            preferredContentSize = CGSize(width: 406, height: 335)
         }
     }
 }
