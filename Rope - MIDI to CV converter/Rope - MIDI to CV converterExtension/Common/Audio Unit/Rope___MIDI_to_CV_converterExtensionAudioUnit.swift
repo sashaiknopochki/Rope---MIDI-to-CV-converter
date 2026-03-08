@@ -164,11 +164,6 @@ public class Rope___MIDI_to_CV_converterExtensionAudioUnit: AUAudioUnit, @unchec
                 value: 0,
                 in: parameterTree
             )
-            writeParameter(
-                at: AUParameterAddress(Rope___MIDI_to_CV_converterExtensionParameterAddress.channelOutputNumberBase.rawValue + AUParameterAddress(slot)),
-                value: AUValue(slot + 1),
-                in: parameterTree
-            )
         }
 
         for card in cards {
@@ -186,11 +181,6 @@ public class Rope___MIDI_to_CV_converterExtensionAudioUnit: AUAudioUnit, @unchec
             writeParameter(
                 at: AUParameterAddress(Rope___MIDI_to_CV_converterExtensionParameterAddress.channelSourceMIDIChannelBase.rawValue + slot),
                 value: AUValue(card.sourceMIDIChannel),
-                in: parameterTree
-            )
-            writeParameter(
-                at: AUParameterAddress(Rope___MIDI_to_CV_converterExtensionParameterAddress.channelOutputNumberBase.rawValue + slot),
-                value: AUValue(card.outputChannel),
                 in: parameterTree
             )
         }
@@ -222,15 +212,13 @@ public class Rope___MIDI_to_CV_converterExtensionAudioUnit: AUAudioUnit, @unchec
 
             let ccAddress = AUParameterAddress(Rope___MIDI_to_CV_converterExtensionParameterAddress.channelCCNumberBase.rawValue + offset)
             let sourceAddress = AUParameterAddress(Rope___MIDI_to_CV_converterExtensionParameterAddress.channelSourceMIDIChannelBase.rawValue + offset)
-            let outputAddress = AUParameterAddress(Rope___MIDI_to_CV_converterExtensionParameterAddress.channelOutputNumberBase.rawValue + offset)
 
             cards.append(
                 OutputCard(
                     slotIndex: slot,
                     sourceMIDIChannel: Int(parameterTree.parameter(withAddress: sourceAddress)?.value ?? 0),
                     function: function,
-                    ccNumber: Int(parameterTree.parameter(withAddress: ccAddress)?.value ?? 1),
-                    outputChannel: Int(parameterTree.parameter(withAddress: outputAddress)?.value ?? AUValue(slot + 1))
+                    ccNumber: Int(parameterTree.parameter(withAddress: ccAddress)?.value ?? 1)
                 )
             )
         }
@@ -246,8 +234,7 @@ public class Rope___MIDI_to_CV_converterExtensionAudioUnit: AUAudioUnit, @unchec
                     slotIndex: max(0, min(15, card.slotIndex)),
                     sourceMIDIChannel: max(0, min(16, card.sourceMIDIChannel)),
                     function: card.function,
-                    ccNumber: max(0, min(127, card.ccNumber)),
-                    outputChannel: max(1, min(16, card.outputChannel))
+                    ccNumber: max(0, min(127, card.ccNumber))
                 )
             }
             .filter { card in

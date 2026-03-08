@@ -19,7 +19,6 @@ public:
             mCardFunctions[i] = FunctionType::Off;
             mCardCCNumbers[i] = 1;
             mCardSourceMIDIChannel[i] = kAnyMIDIChannelSource;
-            mCardOutputNumber[i] = static_cast<uint8_t>(i + 1);
         }
 
         // Default UI state: two active cards.
@@ -66,13 +65,6 @@ public:
             return;
         }
 
-        if (address >= channelOutputNumberBase && address <= channelOutputNumberLast) {
-            const uint32_t cardIndex = static_cast<uint32_t>(address - channelOutputNumberBase);
-            int32_t outputNumber = static_cast<int32_t>(value);
-            outputNumber = std::clamp(outputNumber, 1, 16);
-            mCardOutputNumber[cardIndex] = static_cast<uint8_t>(outputNumber);
-            return;
-        }
     }
 
     AUValue getParameter(AUParameterAddress address) {
@@ -89,11 +81,6 @@ public:
         if (address >= channelSourceMIDIChannelBase && address <= channelSourceMIDIChannelLast) {
             const uint32_t cardIndex = static_cast<uint32_t>(address - channelSourceMIDIChannelBase);
             return static_cast<AUValue>(mCardSourceMIDIChannel[cardIndex]);
-        }
-
-        if (address >= channelOutputNumberBase && address <= channelOutputNumberLast) {
-            const uint32_t cardIndex = static_cast<uint32_t>(address - channelOutputNumberBase);
-            return static_cast<AUValue>(mCardOutputNumber[cardIndex]);
         }
 
         return 0.f;
@@ -123,7 +110,12 @@ public:
         }
 
         for (UInt32 outputBufferIndex = 0; outputBufferIndex < outputBufferList->mNumberBuffers; ++outputBufferIndex) {
-            float channelValue = summedCVValueForOutput(static_cast<uint8_t>(outputBufferIndex + 1));
+            float channelValue = 0.0f;
+            if (outputBufferIndex == 0) {
+                channelValue = cvValueForCard(0);
+            } else if (outputBufferIndex == 1) {
+                channelValue = cvValueForCard(1);
+            }
             float* channelBuffer = static_cast<float*>(outputBufferList->mBuffers[outputBufferIndex].mData);
             for (AUAudioFrameCount frame = 0; frame < frameCount; ++frame) {
                 channelBuffer[frame] = channelValue;
@@ -379,15 +371,6 @@ private:
         }
     }
 
-    float summedCVValueForOutput(uint8_t outputNumber) const {
-        float sum = 0.0f;
-        for (uint8_t cardIndex = 0; cardIndex < kCardCount; ++cardIndex) {
-            if (mCardOutputNumber[cardIndex] != outputNumber) { continue; }
-            sum += cvValueForCard(cardIndex);
-        }
-        return std::clamp(sum, -1.0f, 1.0f);
-    }
-
     AUHostMusicalContextBlock mMusicalContextBlock;
 
     double mSampleRate = 44100.0;
@@ -398,7 +381,6 @@ private:
     FunctionType mCardFunctions[kCardCount] = {};
     uint8_t mCardCCNumbers[kCardCount] = {};
     uint8_t mCardSourceMIDIChannel[kCardCount] = {};
-    uint8_t mCardOutputNumber[kCardCount] = {};
 
     // MIDI state per source channel
     bool mGateOn[kMIDIChannelCount] = {};

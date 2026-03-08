@@ -20,6 +20,7 @@ public class AudioUnitViewController: AUViewController, AUAudioUnitFactory {
     var outputCardListModel: OutputCardListModel?
     
     private var observation: NSKeyValueObservation?
+    private var outputFormatObservation: NSKeyValueObservation?
 
 	/* iOS View lifcycle
 	public override func viewWillAppear(_ animated: Bool) {
@@ -116,6 +117,7 @@ public class AudioUnitViewController: AUViewController, AUAudioUnitFactory {
 	}
     
     private func configureSwiftUIView(audioUnit: AUAudioUnit) {
+        outputFormatObservation = nil
         if let host = hostingController {
             host.removeFromParent()
             host.view.removeFromSuperview()
@@ -126,6 +128,14 @@ public class AudioUnitViewController: AUViewController, AUAudioUnitFactory {
         }
         let restoredCards = (audioUnit as? Rope___MIDI_to_CV_converterExtensionAudioUnit)?.restoredOutputCardsForUI
         let model = OutputCardListModel(parameterTree: parameterTree, restoredCards: restoredCards)
+        if audioUnit.outputBusses.count > 0 {
+            let outputBus = audioUnit.outputBusses[0]
+            outputFormatObservation = outputBus.observe(\.format, options: [.initial, .new]) { bus, _ in
+                Task { @MainActor in
+                    model.setHostOutputChannelCount(Int(bus.format.channelCount))
+                }
+            }
+        }
         outputCardListModel = model
 
         let content = Rope___MIDI_to_CV_converterExtensionMainView(model: model)

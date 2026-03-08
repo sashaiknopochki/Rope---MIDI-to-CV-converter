@@ -36,12 +36,6 @@ struct OutputCardView: View {
                 .pickerStyle(.menu)
             }
 
-            Picker("Hardware Output", selection: outputBinding) {
-                ForEach(1...16, id: \.self) { output in
-                    Text("Output \(output)").tag(output)
-                }
-            }
-            .pickerStyle(.menu)
         }
         .padding(12)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -75,17 +69,6 @@ struct OutputCardView: View {
             set: { newValue in
                 var updated = card
                 updated.ccNumber = newValue
-                onChange(updated)
-            }
-        )
-    }
-
-    private var outputBinding: Binding<Int> {
-        Binding(
-            get: { card.outputChannel },
-            set: { newValue in
-                var updated = card
-                updated.outputChannel = newValue
                 onChange(updated)
             }
         )

@@ -32,7 +32,12 @@ struct OutputCard: Identifiable, Codable, Equatable {
     var sourceMIDIChannel: Int   // 0 = All, 1...16 = MIDI channel
     var function: OutputFunction
     var ccNumber: Int
-    var outputChannel: Int       // 1...16 hardware output
+}
+
+enum HostOutputState {
+    case none
+    case single
+    case stereo
 }
 
 @MainActor
@@ -41,6 +46,7 @@ final class OutputCardListModel: ObservableObject {
     private static let maxCards = 16
 
     @Published var cards: [OutputCard] = []
+    @Published private(set) var hostOutputChannelCount: Int = 0
 
     private let parameterTree: AUParameterTree
 
@@ -57,6 +63,22 @@ final class OutputCardListModel: ObservableObject {
         pushConfigToKernel()
     }
 
+    var hostOutputState: HostOutputState {
+        switch hostOutputChannelCount {
+        case 0:
+            return .none
+        case 1:
+            return .single
+        default:
+            return .stereo
+        }
+    }
+
+    func setHostOutputChannelCount(_ channelCount: Int) {
+        hostOutputChannelCount = max(0, channelCount)
+        pushConfigToKernel()
+    }
+
     func updateCard(_ updatedCard: OutputCard) {
         guard let index = cards.firstIndex(where: { $0.id == updatedCard.id }) else { return }
         cards[index] = sanitize(updatedCard)
@@ -69,15 +91,14 @@ final class OutputCardListModel: ObservableObject {
             writeFunction(.off, slot: slot)
             writeCCNumber(1, slot: slot)
             writeSourceMIDIChannel(0, slot: slot)
-            writeOutputChannel(slot + 1, slot: slot)
         }
 
-        for card in cards {
+        let activeCardCount = min(Self.visibleCardCount, hostOutputChannelCount)
+        for card in cards where card.slotIndex < activeCardCount {
             let clampedCard = sanitize(card)
             writeFunction(clampedCard.function, slot: clampedCard.slotIndex)
             writeCCNumber(clampedCard.ccNumber, slot: clampedCard.slotIndex)
             writeSourceMIDIChannel(clampedCard.sourceMIDIChannel, slot: clampedCard.slotIndex)
-            writeOutputChannel(clampedCard.outputChannel, slot: clampedCard.slotIndex)
         }
     }
 
@@ -86,8 +107,7 @@ final class OutputCardListModel: ObservableObject {
             slotIndex: max(0, min(Self.visibleCardCount - 1, card.slotIndex)),
             sourceMIDIChannel: max(0, min(16, card.sourceMIDIChannel)),
             function: card.function,
-            ccNumber: max(0, min(127, card.ccNumber)),
-            outputChannel: max(1, min(16, card.outputChannel))
+            ccNumber: max(0, min(127, card.ccNumber))
         )
     }
 
@@ -104,11 +124,6 @@ final class OutputCardListModel: ObservableObject {
     private func writeSourceMIDIChannel(_ sourceMIDIChannel: Int, slot: Int) {
         guard let parameter = parameter(withAddress: sourceAddress(slot: slot)) else { return }
         parameter.value = AUValue(sourceMIDIChannel)
-    }
-
-    private func writeOutputChannel(_ outputChannel: Int, slot: Int) {
-        guard let parameter = parameter(withAddress: outputAddress(slot: slot)) else { return }
-        parameter.value = AUValue(outputChannel)
     }
 
     private func parameter(withAddress address: AUParameterAddress) -> AUParameter? {
@@ -136,13 +151,6 @@ final class OutputCardListModel: ObservableObject {
         )
     }
 
-    private func outputAddress(slot: Int) -> AUParameterAddress {
-        address(
-            base: Rope___MIDI_to_CV_converterExtensionParameterAddress.channelOutputNumberBase.rawValue,
-            slot: slot
-        )
-    }
-
     private func address(
         base: Rope___MIDI_to_CV_converterExtensionParameterAddress.RawValue,
         slot: Int
@@ -158,7 +166,6 @@ final class OutputCardListModel: ObservableObject {
             let functionAddress = AUParameterAddress(Rope___MIDI_to_CV_converterExtensionParameterAddress.channelFunctionBase.rawValue + slotOffset)
             let ccAddress = AUParameterAddress(Rope___MIDI_to_CV_converterExtensionParameterAddress.channelCCNumberBase.rawValue + slotOffset)
             let sourceAddress = AUParameterAddress(Rope___MIDI_to_CV_converterExtensionParameterAddress.channelSourceMIDIChannelBase.rawValue + slotOffset)
-            let outputAddress = AUParameterAddress(Rope___MIDI_to_CV_converterExtensionParameterAddress.channelOutputNumberBase.rawValue + slotOffset)
 
             guard let functionParameter = parameterTree.parameter(withAddress: functionAddress) else { continue }
             let functionRawValue = Int(functionParameter.value)
@@ -167,15 +174,13 @@ final class OutputCardListModel: ObservableObject {
 
             let ccNumber = Int(parameterTree.parameter(withAddress: ccAddress)?.value ?? 1)
             let sourceMIDIChannel = Int(parameterTree.parameter(withAddress: sourceAddress)?.value ?? 0)
-            let outputChannel = Int(parameterTree.parameter(withAddress: outputAddress)?.value ?? AUValue(slot + 1))
 
             loadedCards.append(
                 OutputCard(
                     slotIndex: slot,
                     sourceMIDIChannel: max(0, min(16, sourceMIDIChannel)),
                     function: function,
-                    ccNumber: max(0, min(127, ccNumber)),
-                    outputChannel: max(1, min(16, outputChannel))
+                    ccNumber: max(0, min(127, ccNumber))
                 )
             )
         }
@@ -192,8 +197,7 @@ final class OutputCardListModel: ObservableObject {
             slotIndex: slot,
             sourceMIDIChannel: 0,
             function: slot == 0 ? .gate : .pitch,
-            ccNumber: 1,
-            outputChannel: slot + 1
+            ccNumber: 1
         )
     }
 
@@ -205,8 +209,7 @@ final class OutputCardListModel: ObservableObject {
                     slotIndex: max(0, min(maxCards - 1, card.slotIndex)),
                     sourceMIDIChannel: max(0, min(16, card.sourceMIDIChannel)),
                     function: card.function,
-                    ccNumber: max(0, min(127, card.ccNumber)),
-                    outputChannel: max(1, min(16, card.outputChannel))
+                    ccNumber: max(0, min(127, card.ccNumber))
                 )
             }
             .filter { card in
@@ -230,8 +233,7 @@ final class OutputCardListModel: ObservableObject {
                         slotIndex: slot,
                         sourceMIDIChannel: card.sourceMIDIChannel,
                         function: card.function,
-                        ccNumber: card.ccNumber,
-                        outputChannel: card.outputChannel
+                        ccNumber: card.ccNumber
                     )
                 )
                 continue
@@ -244,8 +246,7 @@ final class OutputCardListModel: ObservableObject {
                         slotIndex: slot,
                         sourceMIDIChannel: card.sourceMIDIChannel,
                         function: card.function,
-                        ccNumber: card.ccNumber,
-                        outputChannel: card.outputChannel
+                        ccNumber: card.ccNumber
                     )
                 )
                 continue
