@@ -7,25 +7,33 @@ struct OutputCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Output Card \(card.slotIndex + 1)")
+                Text("CV Output \(outputName)")
                     .font(.headline)
                 Spacer()
             }
 
-            Picker("Source MIDI", selection: sourceBinding) {
-                Text("All Channels").tag(0)
-                ForEach(1...16, id: \.self) { channel in
-                    Text("Channel \(channel)").tag(channel)
+            HStack {
+                Text("Source MIDI Channel")
+                Spacer()
+                Picker("Source MIDI Channel", selection: sourceBinding) {
+                    Text("All Channels").tag(0)
+                    ForEach(1...16, id: \.self) { channel in
+                        Text("Channel \(channel)").tag(channel)
+                    }
                 }
+                .pickerStyle(.menu)
             }
-            .pickerStyle(.menu)
 
-            Picker("Function", selection: functionBinding) {
-                ForEach(OutputFunction.allCases) { function in
-                    Text(function.displayName).tag(function)
+            HStack {
+                Text("Source MIDI event")
+                Spacer()
+                Picker("Source MIDI event", selection: functionBinding) {
+                    ForEach(OutputFunction.allCases) { function in
+                        Text(function.displayName).tag(function)
+                    }
                 }
+                .pickerStyle(.menu)
             }
-            .pickerStyle(.menu)
 
             if card.function == .cc {
                 Picker("CC Number", selection: ccBinding) {
@@ -50,6 +58,14 @@ struct OutputCardView: View {
                 onChange(updated)
             }
         )
+    }
+
+    private var outputName: String {
+        switch card.slotIndex {
+        case 0: return "A"
+        case 1: return "B"
+        default: return "\(card.slotIndex + 1)"
+        }
     }
 
     private var functionBinding: Binding<OutputFunction> {

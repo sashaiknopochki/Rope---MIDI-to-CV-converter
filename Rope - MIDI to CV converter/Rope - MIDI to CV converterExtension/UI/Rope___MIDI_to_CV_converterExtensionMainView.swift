@@ -7,9 +7,6 @@ struct Rope___MIDI_to_CV_converterExtensionMainView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Rope MIDI-to-CV")
-                .font(.title3.weight(.semibold))
-
             switch model.hostOutputState {
             case .none:
                 Text("Select a hardware output in the host application.")
@@ -46,6 +43,9 @@ struct Rope___MIDI_to_CV_converterExtensionMainView: View {
                     }
                 }
             }
+
+            Text("Rope MIDI-to-CV Converter")
+                .font(.body)
         }
         .padding()
     }
