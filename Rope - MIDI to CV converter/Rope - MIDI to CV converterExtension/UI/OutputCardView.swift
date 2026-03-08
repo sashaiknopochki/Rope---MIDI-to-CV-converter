@@ -4,49 +4,85 @@ struct OutputCardView: View {
     var card: OutputCard
     var onChange: (OutputCard) -> Void
 
+    private let gold = Color(red: 201.0 / 255.0, green: 162.0 / 255.0, blue: 39.0 / 255.0)
+    private let silver = Color(red: 166.0 / 255.0, green: 166.0 / 255.0, blue: 166.0 / 255.0)
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("CV Output \(outputName)")
-                    .font(.headline)
-                Spacer()
+        VStack(alignment: .leading, spacing: 32) {
+            parameterBlock(
+                title: "MIDI CHANNEL",
+                value: sourceMIDIChannelLabel
+            ) {
+                Button("All") { sourceBinding.wrappedValue = 0 }
+                ForEach(1...16, id: \.self) { channel in
+                    Button("Channel \(channel)") { sourceBinding.wrappedValue = channel }
+                }
             }
 
-            HStack {
-                Text("Source MIDI Channel")
-                Spacer()
-                Picker("Source MIDI Channel", selection: sourceBinding) {
-                    Text("All Channels").tag(0)
-                    ForEach(1...16, id: \.self) { channel in
-                        Text("Channel \(channel)").tag(channel)
-                    }
+            parameterBlock(
+                title: "EVENT",
+                value: functionBinding.wrappedValue.displayName
+            ) {
+                ForEach(eventOptions) { function in
+                    Button(function.displayName) { functionBinding.wrappedValue = function }
                 }
-                .pickerStyle(.menu)
-            }
-
-            HStack {
-                Text("Source MIDI event")
-                Spacer()
-                Picker("Source MIDI event", selection: functionBinding) {
-                    ForEach(OutputFunction.allCases) { function in
-                        Text(function.displayName).tag(function)
-                    }
-                }
-                .pickerStyle(.menu)
             }
 
             if card.function == .cc {
-                Picker("CC Number", selection: ccBinding) {
+                parameterBlock(
+                    title: "CC",
+                    value: MIDICCNames.displayName(for: ccBinding.wrappedValue)
+                ) {
                     ForEach(0...127, id: \.self) { ccNumber in
-                        Text(MIDICCNames.displayName(for: ccNumber)).tag(ccNumber)
+                        Button(MIDICCNames.displayName(for: ccNumber)) { ccBinding.wrappedValue = ccNumber }
                     }
                 }
-                .pickerStyle(.menu)
             }
-
         }
-        .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private var sourceMIDIChannelLabel: String {
+        sourceBinding.wrappedValue == 0 ? "All" : "Channel \(sourceBinding.wrappedValue)"
+    }
+
+    private var eventOptions: [OutputFunction] {
+        // AU host menu rendering currently reverses insertion order in this context.
+        // Provide reverse input order so the visible order becomes Off -> ... -> CC.
+        OutputFunction.allCases.sorted { $0.rawValue > $1.rawValue }
+    }
+
+    private func parameterBlock<MenuItems: View>(
+        title: String,
+        value: String,
+        @ViewBuilder menuItems: () -> MenuItems
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.system(size: 15, weight: .regular))
+                .tracking(0.9)
+                .foregroundStyle(gold)
+
+            Menu {
+                menuItems()
+            } label: {
+                HStack {
+                    Text(value)
+                        .font(.system(size: 20, weight: .regular))
+                        .foregroundStyle(.black)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(silver)
+                )
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     private var sourceBinding: Binding<Int> {
@@ -58,14 +94,6 @@ struct OutputCardView: View {
                 onChange(updated)
             }
         )
-    }
-
-    private var outputName: String {
-        switch card.slotIndex {
-        case 0: return "A"
-        case 1: return "B"
-        default: return "\(card.slotIndex + 1)"
-        }
     }
 
     private var functionBinding: Binding<OutputFunction> {
@@ -88,5 +116,32 @@ struct OutputCardView: View {
                 onChange(updated)
             }
         )
+    }
+}
+
+struct OutputCardSlotView: View {
+    @ObservedObject var model: OutputCardListModel
+    let slotIndex: Int
+
+    var body: some View {
+        if let card = model.cards.first(where: { $0.slotIndex == slotIndex }) {
+            OutputCardView(card: card, onChange: model.updateCard)
+        } else {
+            EmptyView()
+        }
+    }
+}
+
+struct OutputDisabledMessageCardView: View {
+    let message: String
+
+    private let gold = Color(red: 201.0 / 255.0, green: 162.0 / 255.0, blue: 39.0 / 255.0)
+
+    var body: some View {
+        Text(message)
+            .font(.system(size: 15, weight: .regular))
+            .foregroundStyle(gold)
+            .tracking(0.9)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

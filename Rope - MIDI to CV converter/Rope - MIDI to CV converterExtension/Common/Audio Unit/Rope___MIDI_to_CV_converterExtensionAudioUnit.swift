@@ -1,11 +1,13 @@
 //___FILEHEADER___
 
 import AVFoundation
+import CoreAudioKit
 import Foundation
 
 public class Rope___MIDI_to_CV_converterExtensionAudioUnit: AUAudioUnit, @unchecked Sendable
 {
     private static let outputCardsStateKey = "rope.outputCards.v1"
+    private static let minimumPreferredViewHeight: CGFloat = 400
 
 	// C++ Objects
 	var kernel = Rope___MIDI_to_CV_converterExtensionDSPKernel()
@@ -14,6 +16,14 @@ public class Rope___MIDI_to_CV_converterExtensionAudioUnit: AUAudioUnit, @unchec
 	private var outputBus: AUAudioUnitBus?
 	private var _outputBusses: AUAudioUnitBusArray!
     private var pendingRestoredCards: [OutputCard]?
+    private var hostOutputChannelCount: Int = 0 {
+        didSet {
+            guard oldValue != hostOutputChannelCount else { return }
+            onHostOutputChannelCountChanged?(hostOutputChannelCount)
+        }
+    }
+
+    var onHostOutputChannelCountChanged: ((Int) -> Void)?
 
 	private var format:AVAudioFormat
 
@@ -28,6 +38,7 @@ public class Rope___MIDI_to_CV_converterExtensionAudioUnit: AUAudioUnit, @unchec
 		outputBus = try AUAudioUnitBus(format: self.format)
         outputBus?.maximumChannelCount = 16
 		_outputBusses = AUAudioUnitBusArray(audioUnit: self, busType: AUAudioUnitBusType.output, busses: [outputBus!])
+        hostOutputChannelCount = Int(outputBus?.format.channelCount ?? 0)
         kernel.initialize(outputBus!.format.sampleRate)
         processHelper = AUProcessHelper(&kernel)
 	}
@@ -71,6 +82,7 @@ public class Rope___MIDI_to_CV_converterExtensionAudioUnit: AUAudioUnit, @unchec
     public override func allocateRenderResources() throws {		
         kernel.setMusicalContextBlock(self.musicalContextBlock)
         kernel.initialize(outputBus!.format.sampleRate)
+        hostOutputChannelCount = Int(outputBus?.format.channelCount ?? 0)
 		try super.allocateRenderResources()
 	}
 
@@ -82,6 +94,24 @@ public class Rope___MIDI_to_CV_converterExtensionAudioUnit: AUAudioUnit, @unchec
         kernel.deInitialize()
         
         super.deallocateRenderResources()
+    }
+
+    public override func shouldChange(to format: AVAudioFormat, for bus: AUAudioUnitBus) -> Bool {
+        let shouldChange = super.shouldChange(to: format, for: bus)
+        if shouldChange, bus.busType == .output, bus.index == 0 {
+            hostOutputChannelCount = Int(format.channelCount)
+        }
+        return shouldChange
+    }
+
+    public override func supportedViewConfigurations(_ availableViewConfigurations: [AUAudioUnitViewConfiguration]) -> IndexSet {
+        var supported = IndexSet()
+        for (index, configuration) in availableViewConfigurations.enumerated() {
+            if configuration.height >= Self.minimumPreferredViewHeight {
+                supported.insert(index)
+            }
+        }
+        return supported
     }
 
 	public func setupParameterTree(_ parameterTree: AUParameterTree) {
@@ -98,6 +128,10 @@ public class Rope___MIDI_to_CV_converterExtensionAudioUnit: AUAudioUnit, @unchec
 
     var restoredOutputCardsForUI: [OutputCard]? {
         pendingRestoredCards
+    }
+
+    var hostOutputChannelCountForUI: Int {
+        hostOutputChannelCount
     }
 
     public override var fullState: [String : Any]? {

@@ -14,97 +14,96 @@ private let log = Logger(subsystem: "com.gracescale.Rope---MIDI-to-CV-converterE
 
 @MainActor
 public class AudioUnitViewController: AUViewController, AUAudioUnitFactory {
+    private let minimumPluginHeight: CGFloat = 400
+
     var audioUnit: AUAudioUnit?
-    
-    var hostingController: HostingController<Rope___MIDI_to_CV_converterExtensionMainView>?
     var outputCardListModel: OutputCardListModel?
-    
+
     private var observation: NSKeyValueObservation?
     private var outputFormatObservation: NSKeyValueObservation?
+    private var modelStateObservation: AnyCancellable?
 
-	/* iOS View lifcycle
-	public override func viewWillAppear(_ animated: Bool) {
-		super.viewWillAppear(animated)
+    private var rootHostingController: HostingController<Rope___MIDI_to_CV_converterExtensionMainView>?
+    private var minimumHeightConstraint: NSLayoutConstraint?
 
-		// Recreate any view related resources here..
-	}
-
-	public override func viewDidDisappear(_ animated: Bool) {
-		super.viewDidDisappear(animated)
-
-		// Destroy any view related content here..
-	}
-	*/
-
-	/* macOS View lifcycle
-	public override func viewWillAppear() {
-		super.viewWillAppear()
-		
-		// Recreate any view related resources here..
-	}
-
-	public override func viewDidDisappear() {
-		super.viewDidDisappear()
-
-		// Destroy any view related content here..
-	}
-	*/
-
-	deinit {
-	}
+    deinit {
+    }
 
     public override func viewDidLoad() {
         super.viewDidLoad()
-        
+        view.backgroundColor = .systemBackground
+        let minHeightConstraint = view.heightAnchor.constraint(greaterThanOrEqualToConstant: minimumPluginHeight)
+        minHeightConstraint.priority = .required
+        minHeightConstraint.isActive = true
+        minimumHeightConstraint = minHeightConstraint
+        applyAdaptivePreferredContentSize()
+
         // Accessing the `audioUnit` parameter prompts the AU to be created via createAudioUnit(with:)
         guard let audioUnit = self.audioUnit else {
             return
         }
-        configureSwiftUIView(audioUnit: audioUnit)
+        configureContent(audioUnit: audioUnit)
     }
-    
+
+    public override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        applyAdaptivePreferredContentSize()
+    }
+
+    public override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        applyAdaptivePreferredContentSize()
+    }
+
+    public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        if #unavailable(iOS 17.0) {
+            super.traitCollectionDidChange(previousTraitCollection)
+        }
+        applyAdaptivePreferredContentSize()
+    }
+
     @MainActor
     private func buildAudioUnit(componentDescription: AudioComponentDescription) throws -> AUAudioUnit {
         audioUnit = try Rope___MIDI_to_CV_converterExtensionAudioUnit(componentDescription: componentDescription, options: [])
-        
+
         guard let audioUnit = self.audioUnit as? Rope___MIDI_to_CV_converterExtensionAudioUnit else {
             log.error("Unable to create Rope___MIDI_to_CV_converterExtensionAudioUnit")
             return self.audioUnit!
         }
-        
+
         defer {
             // Configure the SwiftUI view after creating the AU, instead of in viewDidLoad,
             // so that the parameter tree is set up before we build our @AUParameterUI properties
             DispatchQueue.main.async {
-                self.configureSwiftUIView(audioUnit: audioUnit)
+                self.configureContent(audioUnit: audioUnit)
             }
         }
-        
+
         audioUnit.setupParameterTree(Rope___MIDI_to_CV_converterExtensionParameterSpecs.createAUParameterTree())
-        
-        self.observation = audioUnit.observe(\.allParameterValues, options: [.new]) { object, change in
+
+        self.observation = audioUnit.observe(\.allParameterValues, options: [.new]) { _, _ in
             guard let tree = audioUnit.parameterTree else { return }
-            
-            // This insures the Audio Unit gets initial values from the host.
+
+            // This ensures the Audio Unit gets initial values from the host.
             for param in tree.allParameters { param.value = param.value }
         }
-        
+
         guard audioUnit.parameterTree != nil else {
             log.error("Unable to access AU ParameterTree")
             return audioUnit
         }
-        
+
         return audioUnit
     }
-    
-	nonisolated public func createAudioUnit(with componentDescription: AudioComponentDescription) throws -> AUAudioUnit {
+
+    nonisolated public func createAudioUnit(with componentDescription: AudioComponentDescription) throws -> AUAudioUnit {
         // Avoid deadlocking the extension host when this callback is already invoked on main.
         if Thread.isMainThread {
             return try MainActor.assumeIsolated {
                 try self.buildAudioUnit(componentDescription: componentDescription)
             }
         }
-        
+
         var result: Result<AUAudioUnit, Error>!
         DispatchQueue.main.sync {
             result = Result {
@@ -114,44 +113,81 @@ public class AudioUnitViewController: AUViewController, AUAudioUnitFactory {
             }
         }
         return try result.get()
-	}
-    
-    private func configureSwiftUIView(audioUnit: AUAudioUnit) {
+    }
+
+    private func configureContent(audioUnit: AUAudioUnit) {
         outputFormatObservation = nil
-        if let host = hostingController {
-            host.removeFromParent()
-            host.view.removeFromSuperview()
-        }
-        
+        modelStateObservation = nil
+
         guard let parameterTree = audioUnit.parameterTree else {
             return
         }
-        let restoredCards = (audioUnit as? Rope___MIDI_to_CV_converterExtensionAudioUnit)?.restoredOutputCardsForUI
+
+        let ropeAudioUnit = audioUnit as? Rope___MIDI_to_CV_converterExtensionAudioUnit
+        let restoredCards = ropeAudioUnit?.restoredOutputCardsForUI
         let model = OutputCardListModel(parameterTree: parameterTree, restoredCards: restoredCards)
+
+        if let ropeAudioUnit {
+            ropeAudioUnit.onHostOutputChannelCountChanged = { [weak self] channelCount in
+                Task { @MainActor in
+                    self?.outputCardListModel?.setHostOutputChannelCount(channelCount)
+                }
+            }
+            model.setHostOutputChannelCount(ropeAudioUnit.hostOutputChannelCountForUI)
+        }
+
         if audioUnit.outputBusses.count > 0 {
             let outputBus = audioUnit.outputBusses[0]
+            if ropeAudioUnit == nil {
+                model.setHostOutputChannelCount(Int(outputBus.format.channelCount))
+            }
             outputFormatObservation = outputBus.observe(\.format, options: [.initial, .new]) { bus, _ in
                 Task { @MainActor in
                     model.setHostOutputChannelCount(Int(bus.format.channelCount))
                 }
             }
         }
-        outputCardListModel = model
 
-        let content = Rope___MIDI_to_CV_converterExtensionMainView(model: model)
-        let host = HostingController(rootView: content)
-        self.addChild(host)
-        host.view.frame = self.view.bounds
-        self.view.addSubview(host.view)
-        hostingController = host
-        
-        // Make sure the SwiftUI view fills the full area provided by the view controller
-        host.view.translatesAutoresizingMaskIntoConstraints = false
-        host.view.topAnchor.constraint(equalTo: self.view.topAnchor).isActive = true
-        host.view.leadingAnchor.constraint(equalTo: self.view.leadingAnchor).isActive = true
-        host.view.trailingAnchor.constraint(equalTo: self.view.trailingAnchor).isActive = true
-        host.view.bottomAnchor.constraint(equalTo: self.view.bottomAnchor).isActive = true
-        self.view.bringSubviewToFront(host.view)
+        modelStateObservation = model.$hostOutputChannelCount.sink { [weak self] _ in
+            guard let self else { return }
+            self.installOrUpdateRootView(model: model)
+            self.applyAdaptivePreferredContentSize()
+        }
+
+        outputCardListModel = model
+        installOrUpdateRootView(model: model)
+        applyAdaptivePreferredContentSize()
     }
-    
+
+    private func installOrUpdateRootView(model: OutputCardListModel) {
+        let rootView = Rope___MIDI_to_CV_converterExtensionMainView(model: model)
+
+        if let host = rootHostingController {
+            host.rootView = rootView
+            return
+        }
+
+        let host = HostingController(rootView: rootView)
+        rootHostingController = host
+
+        addChild(host)
+        view.addSubview(host.view)
+        host.view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            host.view.topAnchor.constraint(equalTo: view.topAnchor),
+            host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        host.view.heightAnchor.constraint(greaterThanOrEqualToConstant: minimumPluginHeight).isActive = true
+        host.didMove(toParent: self)
+    }
+
+    private func applyAdaptivePreferredContentSize() {
+        if traitCollection.horizontalSizeClass == .regular {
+            preferredContentSize = CGSize(width: 744, height: minimumPluginHeight)
+        } else {
+            preferredContentSize = CGSize(width: 406, height: minimumPluginHeight)
+        }
+    }
 }
