@@ -13,10 +13,12 @@ struct OutputCardView: View {
                 title: "MIDI CHANNEL",
                 value: sourceMIDIChannelLabel
             ) {
-                Button("All") { sourceBinding.wrappedValue = 0 }
-                ForEach(1...16, id: \.self) { channel in
+                // AU host menu rendering currently reverses insertion order in this context.
+                // Provide reverse input order so the visible order becomes All -> Channel 1 -> ... -> Channel 16.
+                ForEach((1...16).reversed(), id: \.self) { channel in
                     Button("Channel \(channel)") { sourceBinding.wrappedValue = channel }
                 }
+                Button("All") { sourceBinding.wrappedValue = 0 }
             }
 
             parameterBlock(

@@ -5,23 +5,14 @@
 //  Created by Aleksandr Sudin on 28.02.26.
 //
 
-import AudioToolbox
 import SwiftUI
 
 struct ContentView: View {
-    let hostModel: AudioUnitHostModel
-    @State private var isSheetPresented = false
-    
-    var margin = 10.0
-    var doubleMargin: Double {
-        margin * 2.0
-    }
-    
     var body: some View {
         ZStack {
             Color(UIColor.systemBackground).ignoresSafeArea()
 
-            VStack(spacing: 24) {
+            VStack(spacing: 20) {
                 VStack(spacing: 6) {
                     Text("Rope")
                         .font(.largeTitle.bold())
@@ -30,32 +21,27 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Text("Use Rope as an AUv3 instrument plugin in AUM or another compatible host app. Rope converts incoming MIDI messages into DC-coupled CV signals for modular synthesizers via an audio interface such as the Expert Sleepers ES-8.")
+                Text("Thanks for downloading Rope.")
+                    .font(.title3.weight(.semibold))
+                    .multilineTextAlignment(.center)
+
+                Text("Rope is an Audio Unit v3 plugin, so it needs a host app like AUM to run.")
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 24)
+
+                Text("Open your host app, insert Rope as an instrument plugin, then route its outputs to your DC-coupled interface.")
                     .font(.body)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 32)
-
-                Divider()
-
-                VStack(spacing: 8) {
-                    if hostModel.audioUnitCrashed {
-                        Label("Plugin crashed", systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
-                    } else {
-                        ValidationView(hostModel: hostModel, isSheetPresented: $isSheetPresented)
-                        if let viewController = hostModel.viewModel.viewController {
-                            AUViewControllerUI(viewController: viewController)
-                                .padding(margin)
-                        }
-                    }
-                }
             }
-            .padding(doubleMargin)
+            .padding(20)
         }
     }
 }
 
 #Preview {
-    ContentView(hostModel: AudioUnitHostModel())
+    ContentView()
 }

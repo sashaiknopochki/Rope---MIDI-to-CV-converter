@@ -13,6 +13,8 @@
 					<string>Rope - MIDI to CV converter</string>
 					<key>factoryFunction</key>
 					<string>$(PRODUCT_MODULE_NAME).AudioUnitViewController</string>
+					<key>icon</key>
+					<string>AUIcon</string>
 					<key>manufacturer</key>
 					<string>Rope</string>
 					<key>name</key>
