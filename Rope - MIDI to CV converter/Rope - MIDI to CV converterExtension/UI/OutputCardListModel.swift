@@ -37,6 +37,7 @@ struct OutputCard: Identifiable, Codable, Equatable {
 
 @MainActor
 final class OutputCardListModel: ObservableObject {
+    private static let visibleCardCount = 2
     private static let maxCards = 16
 
     @Published var cards: [OutputCard] = []
@@ -46,44 +47,13 @@ final class OutputCardListModel: ObservableObject {
     init(parameterTree: AUParameterTree, restoredCards: [OutputCard]? = nil) {
         self.parameterTree = parameterTree
         if let restoredCards {
-            self.cards = Self.sanitizeCards(restoredCards)
+            self.cards = Self.normalizeForDisplay(Self.sanitizeCards(restoredCards))
             pushConfigToKernel()
             return
         }
 
-        self.cards = Self.readCards(from: parameterTree)
+        self.cards = Self.normalizeForDisplay(Self.readCards(from: parameterTree))
 
-        if cards.isEmpty {
-            cards = Self.defaultCards()
-            pushConfigToKernel()
-        }
-    }
-
-    func addCard() {
-        guard cards.count < Self.maxCards else { return }
-
-        let usedSlots = Set(cards.map(\.slotIndex))
-        guard let firstOpenSlot = (0..<Self.maxCards).first(where: { !usedSlots.contains($0) }) else {
-            return
-        }
-
-        let nextOutput = min(cards.count + 1, Self.maxCards)
-        cards.append(
-            OutputCard(
-                slotIndex: firstOpenSlot,
-                sourceMIDIChannel: 0,
-                function: .gate,
-                ccNumber: 1,
-                outputChannel: nextOutput
-            )
-        )
-
-        cards.sort { $0.slotIndex < $1.slotIndex }
-        pushConfigToKernel()
-    }
-
-    func removeCard(id: Int) {
-        cards.removeAll { $0.id == id }
         pushConfigToKernel()
     }
 
@@ -113,7 +83,7 @@ final class OutputCardListModel: ObservableObject {
 
     private func sanitize(_ card: OutputCard) -> OutputCard {
         OutputCard(
-            slotIndex: max(0, min(Self.maxCards - 1, card.slotIndex)),
+            slotIndex: max(0, min(Self.visibleCardCount - 1, card.slotIndex)),
             sourceMIDIChannel: max(0, min(16, card.sourceMIDIChannel)),
             function: card.function,
             ccNumber: max(0, min(127, card.ccNumber)),
@@ -214,10 +184,17 @@ final class OutputCardListModel: ObservableObject {
     }
 
     private static func defaultCards() -> [OutputCard] {
-        [
-            OutputCard(slotIndex: 0, sourceMIDIChannel: 0, function: .gate, ccNumber: 1, outputChannel: 1),
-            OutputCard(slotIndex: 1, sourceMIDIChannel: 0, function: .pitch, ccNumber: 1, outputChannel: 2)
-        ]
+        (0..<visibleCardCount).map(defaultCard(for:))
+    }
+
+    private static func defaultCard(for slot: Int) -> OutputCard {
+        OutputCard(
+            slotIndex: slot,
+            sourceMIDIChannel: 0,
+            function: slot == 0 ? .gate : .pitch,
+            ccNumber: 1,
+            outputChannel: slot + 1
+        )
     }
 
     private static func sanitizeCards(_ cards: [OutputCard]) -> [OutputCard] {
@@ -239,5 +216,44 @@ final class OutputCardListModel: ObservableObject {
             }
             .prefix(maxCards)
             .sorted { $0.slotIndex < $1.slotIndex }
+    }
+
+    private static func normalizeForDisplay(_ cards: [OutputCard]) -> [OutputCard] {
+        var remaining = cards
+        var normalized: [OutputCard] = []
+
+        for slot in 0..<visibleCardCount {
+            if let exactIndex = remaining.firstIndex(where: { $0.slotIndex == slot }) {
+                let card = remaining.remove(at: exactIndex)
+                normalized.append(
+                    OutputCard(
+                        slotIndex: slot,
+                        sourceMIDIChannel: card.sourceMIDIChannel,
+                        function: card.function,
+                        ccNumber: card.ccNumber,
+                        outputChannel: card.outputChannel
+                    )
+                )
+                continue
+            }
+
+            if !remaining.isEmpty {
+                let card = remaining.removeFirst()
+                normalized.append(
+                    OutputCard(
+                        slotIndex: slot,
+                        sourceMIDIChannel: card.sourceMIDIChannel,
+                        function: card.function,
+                        ccNumber: card.ccNumber,
+                        outputChannel: card.outputChannel
+                    )
+                )
+                continue
+            }
+
+            normalized.append(defaultCard(for: slot))
+        }
+
+        return normalized.sorted { $0.slotIndex < $1.slotIndex }
     }
 }

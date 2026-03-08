@@ -15,18 +15,11 @@ struct Rope___MIDI_to_CV_converterExtensionMainView: View {
                     ForEach(model.cards) { card in
                         OutputCardView(
                             card: card,
-                            onChange: model.updateCard,
-                            onDelete: { model.removeCard(id: card.id) }
+                            onChange: model.updateCard
                         )
                     }
                 }
             }
-
-            Button("Add Output Channel") {
-                model.addCard()
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(model.cards.count >= 16)
         }
         .padding()
     }

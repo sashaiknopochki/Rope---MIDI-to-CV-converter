@@ -3,7 +3,6 @@ import SwiftUI
 struct OutputCardView: View {
     var card: OutputCard
     var onChange: (OutputCard) -> Void
-    var onDelete: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -11,10 +10,6 @@ struct OutputCardView: View {
                 Text("Output Card \(card.slotIndex + 1)")
                     .font(.headline)
                 Spacer()
-                Button(role: .destructive, action: onDelete) {
-                    Label("Delete", systemImage: "trash")
-                }
-                .buttonStyle(.bordered)
             }
 
             Picker("Source MIDI", selection: sourceBinding) {
